@@ -1,0 +1,5 @@
+1. Copy paste the Arduino code from "RobotControlArduino.ino" into Arduino IDE.
+2. Then copy paste the python code from "XboxControllerRunner" into your python IDE (preferably pycharm).
+3. Connect your arduino and xbox controller to the computer.
+4. Run Arduino code first then the python code.
+5. Pray to Mr. Kim.
