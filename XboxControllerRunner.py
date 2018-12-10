@@ -47,7 +47,7 @@ class GUI(QWidget):
         self.__timer_init = QTimer()
         self.__timer_init.timeout.connect(self.pollController)
         self.__timer_init.setSingleShot(False)
-        self.__timer_init.start(10)
+        self.__timer_init.start(50)
 
         self.button_array = []
         self.axes_array = []
@@ -147,7 +147,6 @@ class GUI(QWidget):
         ## I ADDED THIS
 
     def pollController(self):
-        toSend = []
         # 0: Left Stick Y, 0-100
         # 1: Left Stick X, 0-100
         # 2: Right Stick Y, 0-100
@@ -189,19 +188,18 @@ class GUI(QWidget):
                 #print (values)
 
                 to_send = bytearray(16)
-                yStick = int(getAxisValueInPercentage(-self.my_joystick.get_axis(1)))  #Left Stick Y
-                xStick= int(getAxisValueInPercentage(self.my_joystick.get_axis(0)))  # Left Stick X
 
-                if yStick<=-45:
-                    xStick = 50
-
-                if yStick<=55:
-                    yStick=0
+                # read value and flip sign so that -1 is stick-down and +1 is stick-up
+                yStick = -self.my_joystick.get_axis(1)
+                if yStick <= 0:
+                    yStick = 0
                 else:
-                    yStick=(yStick*2)-100
+                    yStick *= 100
 
-                to_send[0] = yStick
-                to_send[1] = xStick
+                # print(int(yStick), int(getAxisValueInPercentage(self.my_joystick.get_axis(0))))
+
+                to_send[0] = int(yStick)
+                to_send[1] = int(getAxisValueInPercentage(self.my_joystick.get_axis(0)))
                 to_send[2] = int(getAxisValueInPercentage(-self.my_joystick.get_axis(4)))  #Right Stick Y
                 to_send[3] = int(getAxisValueInPercentage(self.my_joystick.get_axis(3)))  #Right Stick X
                 to_send[4] = int(getAxisValueInPercentage(self.my_joystick.get_axis(2)))  # Trigger buttons
@@ -300,7 +298,7 @@ class Communications:
             print(portname)
         return ports
 
-    def openPort(self, portname="COM7"):
+    def openPort(self, portname="COM3"):
         self.SerialPort.port = portname
         self.SerialPort.open()
 
