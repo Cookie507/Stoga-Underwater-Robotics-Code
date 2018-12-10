@@ -25,7 +25,6 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 //Servo forR;
 
 
-
 int risePin = 0; //triggers
 int rise2Pin = 1;
 int forLPin = 2; //left stick combo
@@ -43,6 +42,9 @@ int wristAngle = 90;
 int handAngle = 90;
 int camAngle = 90;
 int cam2Angle = 90;
+
+int dataCount = 0;
+bool collectData = false;
 
 void setup() {
   Serial.begin(38400);
@@ -66,68 +68,82 @@ void setup() {
 }
 
 void loop() {
-  if(Serial.available() >= 16) {
-     while(Serial.read()!=250){} //only start taking data if it begins with this flag byte
-     for(int i = 0; i< 16; i++) {
-        bytes[i] = Serial.read();
-        if(bytes[i]==250) { //throw the array away if there's a 250 in it (as 250 is invalid)
-          i=-1;
-          for(int j = 0; j< 16; j++)bytes[j]=0;
-        }
-        //0: Left Stick Y, 0-100
-        //1: Left Stick X, 0-100
-        //2: Right Stick Y, 0-100
-        //3: Right Stick X, 0-100
-        //4: Triggers, 0-100
-        //5-8: A, B, X, Y
-        //9-10: Bumpers
-        //11-12: Back, Start
-        //13: Left Stick Button
-        //14: Right Stick Button
-        //15: Hat Switch, 0-8
-        //For Hat, 0 is resting, 1:NW, 2:N, continues clockwise
-     }
-     
-     for(int i=0; i<16; i++) { //send data back to java so we know what we're doing
-       Serial.print(bytes[i]);
-       Serial.print("\t");
-     }
-     Serial.println();
-     
-     if(bytes[0] <=60 && bytes[0] >=40)bytes[0]=50; //make sure we have a little tolerance
-     if(bytes[1] <=60 && bytes[1] >=40)bytes[1]=50;
-     if(bytes[2] <=60 && bytes[2] >=40)bytes[2]=50;
-     if(bytes[3] <=60 && bytes[3] >=40)bytes[3]=50;
-     if(bytes[4] <=53 && bytes[4] >=47)bytes[4]=50; //the triggers need less of a dead spot
-     
-     differentialDrive(bytes[1], bytes[0]);
-     iDontKnowWhyThisWorksButItDo(bytes[4]);
-     
-     cam2Angle = updateAngle(bytes[2], cam2Angle, 2);
-     cam2Angle = constrain(cam2Angle, 60, 90);
-     pwm.setPWM(cam2Pin, 0, angleToPulseLength(cam2Angle));
-     //Serial.print("Camera Angles: ");
-     //Serial.print(cam2Angle);
-     //Serial.print(" ");
-     
-     camAngle = updateAngle(bytes[3], camAngle, 2);
-     camAngle = constrain(camAngle, 60, 150);
-     pwm.setPWM(camPin, 0, angleToPulseLength(camAngle));
-     //Serial.println(camAngle);
-     
-     handAngle = servoIncrement(bytes[9], bytes[10], handAngle);
-     pwm.setPWM(handPin, 0, angleToPulseLength(handAngle));
-     
-     armAngle = servoIncrement(bytes[5], bytes[6], armAngle);
-     pwm.setPWM(armPin, 0, angleToPulseLength(armAngle));
-     
-     wristAngle = servoIncrement(bytes[7], bytes[8], wristAngle); //this is for testing the servo ONLY
-     pwm.setPWM(wristPin, 0, angleToPulseLength(wristAngle));
-     
-     if(bytes[12]==1)pinMode(13,HIGH);
-     else pinMode(13,LOW); //debugging light, uses start button
+  if(Serial.available())
+  {
+    if (Serial.peek() == 250)
+    {
+      Serial.read();
+      collectData = true;
+      dataCount = 0;
+    }
+    else if (collectData && dataCount < 16)
+    {
+      bytes[dataCount] = Serial.read();
+      dataCount += 1;
+    }
+    else
+    {
+      collectData = false;
+      dataCount = 0;
+    }
+
+    //0: Left Stick Y, 0-100
+    //1: Left Stick X, 0-100
+    //2: Right Stick Y, 0-100
+    //3: Right Stick X, 0-100
+    //4: Triggers, 0-100
+    //5-8: A, B, X, Y
+    //9-10: Bumpers
+    //11-12: Back, Start
+    //13: Left Stick Button
+    //14: Right Stick Button
+    //15: Hat Switch, 0-8
+    //For Hat, 0 is resting, 1:NW, 2:N, continues clockwise
+    
+    if (dataCount == 16)
+    {
+      // process the byte buffer
+//      for(int i=0; i<16; i++) { //send data back to java so we know what we're doing
+//        Serial.print(bytes[i]);
+//        Serial.print(", ");
+//      }
+//      Serial.println("");
+
+      // Set motors and camera positions
+      if(bytes[2] <=60 && bytes[2] >=40)bytes[2]=50;
+      if(bytes[3] <=60 && bytes[3] >=40)bytes[3]=50;
+      if(bytes[4] <=53 && bytes[4] >=47)bytes[4]=50; //the triggers need less of a dead spot
+      
+      differentialDrive(bytes[1], bytes[0]);
+      iDontKnowWhyThisWorksButItDo(bytes[4]);
+      
+      cam2Angle = updateAngle(bytes[2], cam2Angle, 2);
+      cam2Angle = constrain(cam2Angle, 60, 90);
+      pwm.setPWM(cam2Pin, 0, angleToPulseLength(cam2Angle));
+      //Serial.print("Camera Angles: ");
+      //Serial.print(cam2Angle);
+      //Serial.print(" ");
+      
+      camAngle = updateAngle(bytes[3], camAngle, 2);
+      camAngle = constrain(camAngle, 60, 150);
+      pwm.setPWM(camPin, 0, angleToPulseLength(camAngle));
+      //Serial.println(camAngle);
+      
+      handAngle = servoIncrement(bytes[9], bytes[10], handAngle);
+      pwm.setPWM(handPin, 0, angleToPulseLength(handAngle));
+      
+      armAngle = servoIncrement(bytes[5], bytes[6], armAngle);
+      pwm.setPWM(armPin, 0, angleToPulseLength(armAngle));
+      
+      wristAngle = servoIncrement(bytes[7], bytes[8], wristAngle); //this is for testing the servo ONLY
+      pwm.setPWM(wristPin, 0, angleToPulseLength(wristAngle));
+      
+      if(bytes[12]==1)pinMode(13,HIGH);
+      else pinMode(13,LOW); //debugging light, uses start button
+    }
+    
   }
-  // delay(5); //just to make sure we don't update TOO fast
+  return;
 }
 
 /*this will change an angle. It's just here so I
@@ -157,17 +173,57 @@ int servoIncrement(int b1, int b2, int angle) {
  //turn=x value (0,100)
  //thrust=y value (0,100)
 void differentialDrive(int turn, int thrust) {
-  turn -= 50;
-  turn=-turn;
-  int rMotor = thrust+constrain(thrust + turn,0,100);
-  int lMotor = thrust+constrain(thrust - turn,0,100);
-  pwm.setPWM(forRPin, 0, angleToPulseLength(rMotor));
-  pwm.setPWM(forLPin, 0, angleToPulseLength(lMotor));
+  turn -= 50; //turn is range from -50, 50
+  turn *= 2; // now range is -100 to 100
+//  int rMotor = (-turn + 100)/2;
+//  int lMotor = (turn + 100)/2;
+  double rMotor = 0.0;
+  double lMotor = 0.0;
+  double A = 0.0;
+  
+  // Only move in quadrant 1 or 2
+  if (thrust>0)
+  {
+    A = sqrt(sq(turn) + sq(thrust));
+    if (A >= 0)
+    {
+      if (turn < 0)
+      {
+        rMotor = A;
+        lMotor = ((turn/100.0)+1.0)*A;
+      }
+      else
+      {
+        lMotor = A;
+        rMotor = (1.0-(turn/100.0))*A;
+      }
+    }
+    else
+    {
+      lMotor = 0;
+      rMotor = 0;
+    }
+  }
+
 //  DEBUGGING
-//  Serial.print("R: ");
-//  Serial.print(map(rMotor,0,100,75,105)); 
-//  Serial.print(" L: ");
-//  Serial.println(map(lMotor,0,100,75,105));
+//  Serial.print("lMotor: ");
+//  Serial.print(lMotor);
+//  Serial.print(", rMotor: ");
+//  Serial.print(rMotor);  
+//  Serial.print(", turn: ");
+//  Serial.print(turn);  
+//  Serial.print(", thrust: ");
+//  Serial.print(thrust);  
+//  Serial.print(", A: ");
+//  Serial.println(A);  
+
+  rMotor = constrain(rMotor, 0, 100);
+  lMotor = constrain(lMotor, 0, 100);
+  rMotor = map(rMotor, 0, 100, SERVOMIN, SERVOMAX);
+  lMotor = map(lMotor, 0, 100, SERVOMIN, SERVOMAX);
+
+  pwm.setPWM(forRPin, 0, int(rMotor));
+  pwm.setPWM(forLPin, 0, int(lMotor));
 }
 
 void iDontKnowWhyThisWorksButItDo(byte angle) {
@@ -181,7 +237,6 @@ void iDontKnowWhyThisWorksButItDo(byte angle) {
 
 int angleToPulseLength(int angle)
 {
-int pulselength = map(angle, 0, 180, SERVOMIN, SERVOMAX);
-return pulselength;
+  int pulselength = map(angle, 0, 180, SERVOMIN, SERVOMAX);
+  return pulselength;
 }
-
