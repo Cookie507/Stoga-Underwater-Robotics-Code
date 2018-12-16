@@ -12,21 +12,11 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 // For 50Hz PWM update rate: 4096 (counts) / 20 ms = 205 counts/ms
 // min position at 1ms = 205 counts
 // max position at 2ms = 410 counts
-#define SERVOMIN  200 // this is the 'minimum' pulse length count (out of 4096)
-#define SERVOMAX  410 // this is the 'maximum' pulse length count (out of 4096)
-//Servo arm;
-//Servo wrist;
-//Servo hand;
-//Servo cam;
-//Servo cam2;
-//Servo rise;
-//Servo rise2;
-//Servo forL;
-//Servo forR;
-
+#define SERVOMIN  190 // this is the 'minimum' pulse length count (out of 4096)
+#define SERVOMAX  440 // this is the 'maximum' pulse length count (out of 4096)
 
 int risePin = 0; //triggers
-int rise2Pin = 1;
+int sinkPin = 1;
 int forLPin = 2; //left stick combo
 int forRPin = 3; //left stick combo
 int armPin = 4; //a and b
@@ -34,8 +24,6 @@ int wristPin = 5;
 int handPin = 6; //bumpers
 int camPin = 7; //right stick x
 int cam2Pin = 8; //right stick y
-
-
 
 int armAngle = 90;
 int wristAngle = 90;
@@ -57,14 +45,15 @@ void setup() {
 
   pwm.setPWM(forLPin, 0, SERVOMIN); 
   pwm.setPWM(forRPin, 0, SERVOMIN); 
+  pwm.setPWM(risePin, 0, SERVOMIN);
+  pwm.setPWM(sinkPin, 0, SERVOMIN);
   pwm.setPWM(armPin, 0, angleToPulseLength(armAngle));
   pwm.setPWM(wristPin, 0, angleToPulseLength(wristAngle));
   pwm.setPWM(handPin, 0, angleToPulseLength(handAngle));
   pwm.setPWM(camPin, 0, angleToPulseLength(camAngle));
   pwm.setPWM(cam2Pin, 0, angleToPulseLength(cam2Angle));
-  pwm.setPWM(risePin, 0, angleToPulseLength(90));
-  pwm.setPWM(rise2Pin, 0, angleToPulseLength(94));
-  
+
+  delay(8000);
 }
 
 void loop() {
@@ -75,6 +64,15 @@ void loop() {
       Serial.read();
       collectData = true;
       dataCount = 0;
+    }
+    else if (Serial.peek() == 251)
+    {
+      Serial.read();
+      pwm.setPWM(forLPin, 0, SERVOMIN); 
+      pwm.setPWM(forRPin, 0, SERVOMIN); 
+      pwm.setPWM(risePin, 0, SERVOMIN);
+      pwm.setPWM(sinkPin, 0, SERVOMIN);
+      delay(3000);
     }
     else if (collectData && dataCount < 16)
     {
@@ -112,10 +110,10 @@ void loop() {
       // Set motors and camera positions
       if(bytes[2] <=60 && bytes[2] >=40)bytes[2]=50;
       if(bytes[3] <=60 && bytes[3] >=40)bytes[3]=50;
-      if(bytes[4] <=53 && bytes[4] >=47)bytes[4]=50; //the triggers need less of a dead spot
+      if(bytes[4] <=55 && bytes[4] >=45)bytes[4]=50; //the triggers need less of a dead spot
       
       differentialDrive(bytes[1], bytes[0]);
-      iDontKnowWhyThisWorksButItDo(bytes[4]);
+      moveUpAndDown(bytes[4]);
       
       cam2Angle = updateAngle(bytes[2], cam2Angle, 2);
       cam2Angle = constrain(cam2Angle, 60, 90);
@@ -226,13 +224,31 @@ void differentialDrive(int turn, int thrust) {
   pwm.setPWM(forLPin, 0, int(lMotor));
 }
 
-void iDontKnowWhyThisWorksButItDo(byte angle) {
-  angle = map(angle, 0, 100, 60, 120);
+// value has range (0, 100). 0=Full down, 100=full up, 50=stay put
+void moveUpAndDown(int value) {
+  // angle = map(angle, 0, 100, 60, 120);
   // Serial.print("Rise Angle: ");
   // Serial.println(angle);
-  pwm.setPWM(risePin, 0, angleToPulseLength(angle));
-  if(angle >=90 && angle <=94) pwm.setPWM(rise2Pin, 0, angleToPulseLength(94));
-  else pwm.setPWM(rise2Pin, 0, angleToPulseLength(angle));
+
+  // Go down
+  if(value <= 45) 
+  {
+    value = map(value, 45, 0, SERVOMIN, SERVOMAX);
+    pwm.setPWM(risePin, 0, SERVOMIN);
+    pwm.setPWM(sinkPin, 0, value);
+  }
+  // Go up
+  else if (value >= 55)
+  {
+    value = map(value, 55, 100, SERVOMIN, SERVOMAX);
+    pwm.setPWM(risePin, 0, value);
+    pwm.setPWM(sinkPin, 0, SERVOMIN);
+  }
+  else
+  {
+    pwm.setPWM(risePin, 0, SERVOMIN);
+    pwm.setPWM(sinkPin, 0, SERVOMIN);    
+  }
 }
 
 int angleToPulseLength(int angle)
