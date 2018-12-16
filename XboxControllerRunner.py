@@ -1,9 +1,6 @@
 import pygame
 import serial
 import sys
-import os
-import sys
-import math
 from pygame.locals import *
 from serial.tools.list_ports import comports
 from PyQt5.QtGui import *
@@ -24,8 +21,9 @@ class GUI(QWidget):
 
         self.my_joystick = None
         self.joystick_names = []
-
         self.g_keys = None
+        self.axes1 = None
+        self.axes2 = None
 
         # Enumerate joysticks
         for i in range(0, pygame.joystick.get_count()):
@@ -37,12 +35,6 @@ class GUI(QWidget):
             self.my_joystick = pygame.joystick.Joystick(0)
             self.my_joystick.init()
 
-        max_joy = max(self.my_joystick.get_numaxes(),
-                      self.my_joystick.get_numbuttons(),
-                      self.my_joystick.get_numhats())
-
-        ## I ADDED THIS
-        # start here
         # Start timer for controller polling
         self.__timer_init = QTimer()
         self.__timer_init.timeout.connect(self.pollController)
@@ -56,7 +48,6 @@ class GUI(QWidget):
         self.axes1 = None
         self.initUI()
 
-        ## I ADDED THIS
 
     def initUI(self):
         # Layout for axes display
@@ -138,15 +129,18 @@ class GUI(QWidget):
         vbox.addWidget(label_dpad)
         vbox.addLayout(hbox_dpad)
 
+        button = QPushButton("Reset Motors")
+        button.clicked.connect(self.send_reset)
+        vbox.addWidget(button)
+
         # self.setGeometry(300, 300, 300, 150)
         self.setLayout(vbox)
 
         # Qt show window
         self.show()
 
-        ## I ADDED THIS
-
     def pollController(self):
+        # Values ranges to collect and send to Arduino
         # 0: Left Stick Y, 0-100
         # 1: Left Stick X, 0-100
         # 2: Right Stick Y, 0-100
@@ -184,47 +178,47 @@ class GUI(QWidget):
                     state = self.my_joystick.get_hat(i)
                     self.hat_array[i].setText(str(state))
 
-                #this is for seeing the controller data
-                #print (values)
-
+                # this is to collect the byte values to send to Arduino
                 to_send = bytearray(16)
 
                 # read value and flip sign so that -1 is stick-down and +1 is stick-up
                 yStick = -self.my_joystick.get_axis(1)
-                if yStick <= 0:
+                # map value 0 to stick center, and value 100 to stick-up. Anything below stick-center is 0.
+                if yStick <= 0:  # from 0 to -1.0
                     yStick = 0
-                else:
+                else:  # from 0 to 1.0
                     yStick *= 100
 
-                # print(int(yStick), int(getAxisValueInPercentage(self.my_joystick.get_axis(0))))
-
-                to_send[0] = int(yStick)
-                to_send[1] = int(getAxisValueInPercentage(self.my_joystick.get_axis(0)))
-                to_send[2] = int(getAxisValueInPercentage(-self.my_joystick.get_axis(4)))  #Right Stick Y
-                to_send[3] = int(getAxisValueInPercentage(self.my_joystick.get_axis(3)))  #Right Stick X
+                # Collect bytes to send from joystick
+                to_send[0] = int(yStick)  # Left stick Y
+                to_send[1] = int(getAxisValueInPercentage(self.my_joystick.get_axis(0)))  # Right Stick X
+                to_send[2] = int(getAxisValueInPercentage(-self.my_joystick.get_axis(4)))  # Right Stick Y
+                to_send[3] = int(getAxisValueInPercentage(self.my_joystick.get_axis(3)))  # Right Stick X
                 to_send[4] = int(getAxisValueInPercentage(self.my_joystick.get_axis(2)))  # Trigger buttons
-                to_send[5] = (self.my_joystick.get_button(0))  #A or Cross
-                to_send[6] = (self.my_joystick.get_button(1))  #B or Circle
-                to_send[7] = (self.my_joystick.get_button(2))  #X or Square
-                to_send[8] = (self.my_joystick.get_button(3))  #Y or Triangle
-                to_send[9] = (self.my_joystick.get_button(4))  #Left Bumper
-                to_send[10] = (self.my_joystick.get_button(5))  #Right Bumper
-                to_send[11] = (self.my_joystick.get_button(6))  #Back or Select
-                to_send[12] = (self.my_joystick.get_button(7))  #Start
-                to_send[13] = (self.my_joystick.get_button(8))  #Left Stick Button
-                to_send[14] = (self.my_joystick.get_button(9))  #Right Stick Buttpn
-                to_send[15] = 0 #(self.my_joystick.get_hat(0))  #D-Pad
+                to_send[5] = (self.my_joystick.get_button(0))  # A or Cross
+                to_send[6] = (self.my_joystick.get_button(1))  # B or Circle
+                to_send[7] = (self.my_joystick.get_button(2))  # X or Square
+                to_send[8] = (self.my_joystick.get_button(3))  # Y or Triangle
+                to_send[9] = (self.my_joystick.get_button(4))  # Left Bumper
+                to_send[10] = (self.my_joystick.get_button(5))  # Right Bumper
+                to_send[11] = (self.my_joystick.get_button(6))  # Back or Select
+                to_send[12] = (self.my_joystick.get_button(7))  # Start
+                to_send[13] = (self.my_joystick.get_button(8))  # Left Stick Button
+                to_send[14] = (self.my_joystick.get_button(9))  # Right Stick Buttpn
+                to_send[15] = 0  # D-Pad
 
+                # This is the flag in the array
+                to_send.insert(0, 250)
+                self.comm.sendData(to_send)
+
+                # For debug from Python, uncomment
                 dumb = []
                 for b in to_send:
                     dumb.append(b)
                 print(dumb)
 
-                #This is the flag in the array
-                to_send.insert(0, 250)
-                self.comm.sendData(to_send)
-
-                self.comm.getBytesAvailableToRead()
+                # For debug from Arduino, uncomment
+                # self.comm.getBytesAvailableToRead()
 
     def quit(self):
         if self.my_joystick and self.my_joystick.get_init():
@@ -238,10 +232,14 @@ class GUI(QWidget):
         self.quit()
         event.accept()  # let the window close
 
+    def send_reset(self):
+        to_send = bytearray(0)
+        to_send.insert(0, 251)
+        self.comm.sendData(to_send)
+        print ('Motors Are Reset!')
 
 def getAxisValueInPercentage(axisValue:float)->int:
-    return (((2 - (1 - axisValue)) * 100) / 2)
-
+    return int(((2.0 - (1.0 - axisValue)) * 100.0) / 2.0)
 
 # Assumes range on axes is -100 to 100
 class AxesWidget(QWidget):
@@ -294,12 +292,12 @@ class Communications:
 
     def getListofPorts(self):
         ports = comports()
-        for portname in ports:
-            print(portname)
+        for port in ports:
+            print(port)
         return ports
 
-    def openPort(self, portname="COM3"):
-        self.SerialPort.port = portname
+    def openPort(self, port_name="COM7"):
+        self.SerialPort.port = port_name
         self.SerialPort.open()
 
     def sendData(self, vals: bytearray):
@@ -310,7 +308,7 @@ class Communications:
             print(self.SerialPort.readline())
 
 
-if __name__== "__main__":
+if __name__ == "__main__":
     gui = QApplication(sys.argv)
     gui.setApplicationName("ControllerGUI")
     window = GUI()
