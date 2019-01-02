@@ -1,3 +1,4 @@
+
 #include <Adafruit_PWMServoDriver.h>
 #include <Wire.h>
 
@@ -43,6 +44,8 @@ void setup() {
 
   delay(10);
 
+  Serial.println("Setting up da servos!");
+
   pwm.setPWM(forLPin, 0, SERVOMIN); 
   pwm.setPWM(forRPin, 0, SERVOMIN); 
   pwm.setPWM(risePin, 0, SERVOMIN);
@@ -54,6 +57,7 @@ void setup() {
   pwm.setPWM(cam2Pin, 0, angleToPulseLength(cam2Angle));
 
   delay(8000);
+  Serial.println("Ready!");
 }
 
 void loop() {
