@@ -218,7 +218,7 @@ class GUI(QWidget):
                 print(dumb)
 
                 # For debug from Arduino, uncomment
-                # self.comm.getBytesAvailableToRead()
+                self.comm.getBytesAvailableToRead()
 
     def quit(self):
         if self.my_joystick and self.my_joystick.get_init():
