@@ -34,6 +34,7 @@ int cam2Angle = 90;
 
 int dataCount = 0;
 bool collectData = false;
+bool failsafestate=true;
 
 void setup() {
   Serial.begin(38400);
@@ -89,6 +90,7 @@ void loop() {
       dataCount = 0;
     }
 
+// remap  pls
     //0: Left Stick Y, 0-100
     //1: Left Stick X, 0-100
     //2: Right Stick Y, 0-100
@@ -101,7 +103,7 @@ void loop() {
     //14: Right Stick Button
     //15: Hat Switch, 0-8
     //For Hat, 0 is resting, 1:NW, 2:N, continues clockwise
-    
+
     if (dataCount == 16)
     {
       // process the byte buffer
@@ -115,7 +117,28 @@ void loop() {
       if(bytes[2] <=60 && bytes[2] >=40)bytes[2]=50;
       if(bytes[3] <=60 && bytes[3] >=40)bytes[3]=50;
       if(bytes[4] <=55 && bytes[4] >=45)bytes[4]=50; //the triggers need less of a dead spot
-      
+
+      if(bytes[12]==1)
+      {
+        failsafestate=!failsafestate;
+      }
+
+      if(failsafestate==true)
+      {
+        Serial.println("FAILSAFESTATE TRUE");
+        pwm.setPWM(forLPin, 0, SERVOMIN); 
+        pwm.setPWM(forRPin, 0, SERVOMIN); 
+        pwm.setPWM(risePin, 0, SERVOMIN);
+        pwm.setPWM(sinkPin, 0, SERVOMIN);
+        pwm.setPWM(armPin, 0, angleToPulseLength(armAngle));
+        pwm.setPWM(wristPin, 0, angleToPulseLength(wristAngle));
+        pwm.setPWM(handPin, 0, angleToPulseLength(handAngle));
+        pwm.setPWM(camPin, 0, angleToPulseLength(camAngle));
+        pwm.setPWM(cam2Pin, 0, angleToPulseLength(cam2Angle));
+      }
+      else
+      {
+        Serial.println("FAILSAFESTATE FALSE");
       differentialDrive(bytes[1], bytes[0]);
       moveUpAndDown(bytes[4]);
       
@@ -142,6 +165,10 @@ void loop() {
       
       if(bytes[12]==1)pinMode(13,HIGH);
       else pinMode(13,LOW); //debugging light, uses start button
+
+      }
+
+
     }
     
   }
