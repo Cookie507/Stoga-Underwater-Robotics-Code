@@ -183,18 +183,25 @@ class GUI(QWidget):
 
                 # read value and flip sign so that -1 is stick-down and +1 is stick-up
                 yStick = -self.my_joystick.get_axis(1)
-                # map value 0 to stick center, and value 100 to stick-up. Anything below stick-center is 0.
-                if yStick <= 0:  # from 0 to -1.0
-                    yStick = 0
-                else:  # from 0 to 1.0
-                    yStick *= 100
+                # remaps (-1,1) to (0,200)
+                yStick=(yStick+1)*100
+
+                # read value and flip sign so that -1 is stick-down and +1 is stick-up
+                xStick = -self.my_joystick.get_axis(0)
+                # remaps (-1,1) to (0,200)
+                xStick = (xStick + 1) * 100
 
                 # Collect bytes to send from joystick
+
+                #ROV Movement Bytes (Left Joystick)
                 to_send[0] = int(yStick)  # Left stick Y
-                to_send[1] = int(getAxisValueInPercentage(self.my_joystick.get_axis(0)))  # Right Stick X
+                to_send[1] = int(xStick)  # Left Stick X
+                #Camera Control Bytes (Right Joystick)
                 to_send[2] = int(getAxisValueInPercentage(-self.my_joystick.get_axis(4)))  # Right Stick Y
                 to_send[3] = int(getAxisValueInPercentage(self.my_joystick.get_axis(3)))  # Right Stick X
+                #ROV Vertical Movement Bytes (Triggers)
                 to_send[4] = int(getAxisValueInPercentage(self.my_joystick.get_axis(2)))  # Trigger buttons
+                #Miscellaneous Buttons
                 to_send[5] = (self.my_joystick.get_button(0))  # A or Cross
                 to_send[6] = (self.my_joystick.get_button(1))  # B or Circle
                 to_send[7] = (self.my_joystick.get_button(2))  # X or Square
@@ -204,7 +211,7 @@ class GUI(QWidget):
                 to_send[11] = (self.my_joystick.get_button(6))  # Back or Select
                 to_send[12] = (self.my_joystick.get_button(7))  # Start
                 to_send[13] = (self.my_joystick.get_button(8))  # Left Stick Button
-                to_send[14] = (self.my_joystick.get_button(9))  # Right Stick Buttpn
+                to_send[14] = (self.my_joystick.get_button(9))  # Right Stick Button
                 to_send[15] = 0  # D-Pad
 
                 # This is the flag in the array
@@ -239,6 +246,7 @@ class GUI(QWidget):
         print ('Motors Are Reset!')
 
 def getAxisValueInPercentage(axisValue:float)->int:
+    # this converts direct joystick values from (-1,1) to (0,100)
     return int(((2.0 - (1.0 - axisValue)) * 100.0) / 2.0)
 
 # Assumes range on axes is -100 to 100
