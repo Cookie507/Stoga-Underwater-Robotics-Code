@@ -34,21 +34,21 @@ int cam2Angle = 90;
 
 int dataCount = 0;
 bool collectData = false;
-bool failsafestate=true;
+bool failsafestate = true;
 
 void setup() {
   Serial.begin(38400);
-  
+
   pwm.begin();
-  
+
   pwm.setPWMFreq(50);  // ESC's run at ~50 Hz updates
 
   delay(10);
 
   Serial.println("Setting up da servos!");
 
-  pwm.setPWM(forLPin, 0, SERVOMIN); 
-  pwm.setPWM(forRPin, 0, SERVOMIN); 
+  pwm.setPWM(forLPin, 0, SERVOMIN);
+  pwm.setPWM(forRPin, 0, SERVOMIN);
   pwm.setPWM(risePin, 0, SERVOMIN);
   pwm.setPWM(sinkPin, 0, SERVOMIN);
   pwm.setPWM(armPin, 0, angleToPulseLength(armAngle));
@@ -62,7 +62,7 @@ void setup() {
 }
 
 void loop() {
-  if(Serial.available())
+  if (Serial.available())
   {
     if (Serial.peek() == 250)
     {
@@ -73,8 +73,8 @@ void loop() {
     else if (Serial.peek() == 251)
     {
       Serial.read();
-      pwm.setPWM(forLPin, 0, SERVOMIN); 
-      pwm.setPWM(forRPin, 0, SERVOMIN); 
+      pwm.setPWM(forLPin, 0, SERVOMIN);
+      pwm.setPWM(forRPin, 0, SERVOMIN);
       pwm.setPWM(risePin, 0, SERVOMIN);
       pwm.setPWM(sinkPin, 0, SERVOMIN);
       delay(3000);
@@ -90,7 +90,7 @@ void loop() {
       dataCount = 0;
     }
 
-// remap  pls
+    // remap  pls
     //0: Left Stick Y, 0-100
     //1: Left Stick X, 0-100
     //2: Right Stick Y, 0-100
@@ -107,27 +107,27 @@ void loop() {
     if (dataCount == 16)
     {
       // process the byte buffer
-//      for(int i=0; i<16; i++) { //send data back to java so we know what we're doing
-//        Serial.print(bytes[i]);
-//        Serial.print(", ");
-//      }
-//      Serial.println("");
+      //      for(int i=0; i<16; i++) { //send data back to java so we know what we're doing
+      //        Serial.print(bytes[i]);
+      //        Serial.print(", ");
+      //      }
+      //      Serial.println("");
 
       // Set motors and camera positions
-      if(bytes[2] <=60 && bytes[2] >=40)bytes[2]=50;
-      if(bytes[3] <=60 && bytes[3] >=40)bytes[3]=50;
-      if(bytes[4] <=55 && bytes[4] >=45)bytes[4]=50; //the triggers need less of a dead spot
+      if (bytes[2] <= 60 && bytes[2] >= 40)bytes[2] = 50;
+      if (bytes[3] <= 60 && bytes[3] >= 40)bytes[3] = 50;
+      if (bytes[4] <= 55 && bytes[4] >= 45)bytes[4] = 50; //the triggers need less of a dead spot
 
-      if(bytes[12]==1)
+      if (bytes[12] == 1)
       {
-        failsafestate=!failsafestate;
+        failsafestate = !failsafestate;
       }
 
-      if(failsafestate==true)
+      if (failsafestate == true)
       {
         Serial.println("FAILSAFESTATE TRUE");
-        pwm.setPWM(forLPin, 0, SERVOMIN); 
-        pwm.setPWM(forRPin, 0, SERVOMIN); 
+        pwm.setPWM(forLPin, 0, SERVOMIN);
+        pwm.setPWM(forRPin, 0, SERVOMIN);
         pwm.setPWM(risePin, 0, SERVOMIN);
         pwm.setPWM(sinkPin, 0, SERVOMIN);
         pwm.setPWM(armPin, 0, angleToPulseLength(armAngle));
@@ -139,92 +139,92 @@ void loop() {
       else
       {
         Serial.println("FAILSAFESTATE FALSE");
-      differentialDrive(bytes[1], bytes[0]);
-      moveUpAndDown(bytes[4]);
-      
-      cam2Angle = updateAngle(bytes[2], cam2Angle, 2);
-      cam2Angle = constrain(cam2Angle, 60, 90);
-      pwm.setPWM(cam2Pin, 0, angleToPulseLength(cam2Angle));
-      //Serial.print("Camera Angles: ");
-      //Serial.print(cam2Angle);
-      //Serial.print(" ");
-      
-      camAngle = updateAngle(bytes[3], camAngle, 2);
-      camAngle = constrain(camAngle, 60, 150);
-      pwm.setPWM(camPin, 0, angleToPulseLength(camAngle));
-      //Serial.println(camAngle);
-      
-      handAngle = servoIncrement(bytes[9], bytes[10], handAngle);
-      pwm.setPWM(handPin, 0, angleToPulseLength(handAngle));
-      
-      armAngle = servoIncrement(bytes[5], bytes[6], armAngle);
-      pwm.setPWM(armPin, 0, angleToPulseLength(armAngle));
-      
-      wristAngle = servoIncrement(bytes[7], bytes[8], wristAngle); //this is for testing the servo ONLY
-      pwm.setPWM(wristPin, 0, angleToPulseLength(wristAngle));
-      
-      if(bytes[12]==1)pinMode(13,HIGH);
-      else pinMode(13,LOW); //debugging light, uses start button
+        differentialDrive(bytes[1], bytes[0]);
+        moveUpAndDown(bytes[4]);
+
+        cam2Angle = updateAngle(bytes[2], cam2Angle, 2);
+        cam2Angle = constrain(cam2Angle, 60, 90);
+        pwm.setPWM(cam2Pin, 0, angleToPulseLength(cam2Angle));
+        //Serial.print("Camera Angles: ");
+        //Serial.print(cam2Angle);
+        //Serial.print(" ");
+
+        camAngle = updateAngle(bytes[3], camAngle, 2);
+        camAngle = constrain(camAngle, 60, 150);
+        pwm.setPWM(camPin, 0, angleToPulseLength(camAngle));
+        //Serial.println(camAngle);
+
+        handAngle = servoIncrement(bytes[9], bytes[10], handAngle);
+        pwm.setPWM(handPin, 0, angleToPulseLength(handAngle));
+
+        armAngle = servoIncrement(bytes[5], bytes[6], armAngle);
+        pwm.setPWM(armPin, 0, angleToPulseLength(armAngle));
+
+        wristAngle = servoIncrement(bytes[7], bytes[8], wristAngle); //this is for testing the servo ONLY
+        pwm.setPWM(wristPin, 0, angleToPulseLength(wristAngle));
+
+        if (bytes[12] == 1)pinMode(13, HIGH);
+        else pinMode(13, LOW); //debugging light, uses start button
 
       }
 
 
     }
-    
+
   }
   return;
 }
 
 /*this will change an angle. It's just here so I
- *don't have to write the same three lines over and over
- */
+  don't have to write the same three lines over and over
+*/
 int updateAngle(int input, int angle, int increment) {
-  if(input > 60 && angle <= 150) angle+=increment;
-  else if(input < 40 && angle >= 30) angle -=increment;
+  if (input > 60 && angle <= 150) angle += increment;
+  else if (input < 40 && angle >= 30) angle -= increment;
   return angle;
 }
 
 
 /*this will change angles on the servos of the claw's
- *arm and hand. It's just here so I
- *don't have clutter the body of loop()
- */
+  arm and hand. It's just here so I
+  don't have clutter the body of loop()
+*/
 int servoIncrement(int b1, int b2, int angle) {
-  if((b1 == 1 && b2 == 0) && (angle <= 160)) angle+=5;
-  else if((b1 == 0 && b2 == 1) && (angle >= 20)) angle-=5;
+  if ((b1 == 1 && b2 == 0) && (angle <= 160)) angle += 5;
+  else if ((b1 == 0 && b2 == 1) && (angle >= 20)) angle -= 5;
   return angle;
 }
 
 /*this will take a combo of x and y vals from a joystick
- *and turn it into motion. Pin params aren't necessary, as
- *this will only ever control forL and forR
- */
- //turn=x value (0,100)
- //thrust=y value (0,100)
+  and turn it into motion. Pin params aren't necessary, as
+  this will only ever control forL and forR
+*/
+//turn=x value (0,100)
+//thrust=y value (0,100)
 void differentialDrive(int turn, int thrust) {
-  turn -= 50; //turn is range from -50, 50
-  turn *= 2; // now range is -100 to 100
-//  int rMotor = (-turn + 100)/2;
-//  int lMotor = (turn + 100)/2;
+  thrust -= 100; // now range is -100 to 100
+  turn -= 100; // now range is -100 to 100
+  //  int rMotor = (-turn + 100)/2;
+  //  int lMotor = (turn + 100)/2;
   double rMotor = 0.0;
   double lMotor = 0.0;
   double A = 0.0;
-  
+
   // Only move in quadrant 1 or 2
-  if (thrust>0)
+  if (thrust > 0)  //positive y values
   {
     A = sqrt(sq(turn) + sq(thrust));
-    if (A >= 0)
+    if (A >= 10)
     {
       if (turn < 0)
       {
         rMotor = A;
-        lMotor = ((turn/100.0)+1.0)*A;
+        lMotor = ((turn / 100.0) + 1.0) * A; //smaller value then A
       }
       else
       {
         lMotor = A;
-        rMotor = (1.0-(turn/100.0))*A;
+        rMotor = (1.0 - (turn / 100.0)) * A;
       }
     }
     else
@@ -234,22 +234,45 @@ void differentialDrive(int turn, int thrust) {
     }
   }
 
-//  DEBUGGING
-//  Serial.print("lMotor: ");
-//  Serial.print(lMotor);
-//  Serial.print(", rMotor: ");
-//  Serial.print(rMotor);  
-//  Serial.print(", turn: ");
-//  Serial.print(turn);  
-//  Serial.print(", thrust: ");
-//  Serial.print(thrust);  
-//  Serial.print(", A: ");
-//  Serial.println(A);  
+  if (thrust < 0) //negative y values (going backwards wheeeee)
+  {
+    A = sqrt(sq(turn) + sq(thrust));
+    if (A >= 10)
+    {
+      if (turn < 0)
+      {
+        rMotor = -A;
+        lMotor = -((turn / 100.0) + 1.0) * A; //smaller value then A
+      }
+      else
+      {
+        lMotor = -A;
+        rMotor = -(1.0 - (turn / 100.0)) * A;
+      }
+    }
+    else
+    {
+      lMotor = 0;
+      rMotor = 0;
+    }
+  }
 
-  rMotor = constrain(rMotor, 0, 100);
-  lMotor = constrain(lMotor, 0, 100);
-  rMotor = map(rMotor, 0, 100, SERVOMIN, SERVOMAX);
-  lMotor = map(lMotor, 0, 100, SERVOMIN, SERVOMAX);
+  //  DEBUGGING
+  //  Serial.print("lMotor: ");
+  //  Serial.print(lMotor);
+  //  Serial.print(", rMotor: ");
+  //  Serial.print(rMotor);
+  //  Serial.print(", turn: ");
+  //  Serial.print(turn);
+  //  Serial.print(", thrust: ");
+  //  Serial.print(thrust);
+  //  Serial.print(", A: ");
+  //  Serial.println(A);
+
+  rMotor = constrain(rMotor, -100, 100);
+  lMotor = constrain(lMotor, -100, 100);
+  rMotor = map(rMotor, -100, 100, SERVOMIN, SERVOMAX);
+  lMotor = map(lMotor, -100, 100, SERVOMIN, SERVOMAX);
 
   pwm.setPWM(forRPin, 0, int(rMotor));
   pwm.setPWM(forLPin, 0, int(lMotor));
@@ -262,7 +285,7 @@ void moveUpAndDown(int value) {
   // Serial.println(angle);
 
   // Go down
-  if(value <= 45) 
+  if (value <= 45)
   {
     value = map(value, 45, 0, SERVOMIN, SERVOMAX);
     pwm.setPWM(risePin, 0, SERVOMIN);
@@ -278,7 +301,7 @@ void moveUpAndDown(int value) {
   else
   {
     pwm.setPWM(risePin, 0, SERVOMIN);
-    pwm.setPWM(sinkPin, 0, SERVOMIN);    
+    pwm.setPWM(sinkPin, 0, SERVOMIN);
   }
 }
 
@@ -287,3 +310,16 @@ int angleToPulseLength(int angle)
   int pulselength = map(angle, 0, 180, SERVOMIN, SERVOMAX);
   return pulselength;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
