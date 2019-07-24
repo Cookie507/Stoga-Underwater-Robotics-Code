@@ -304,7 +304,7 @@ class Communications:
             print(port)
         return ports
 
-    def openPort(self, port_name="COM7"):
+    def openPort(self, port_name="COM3"):
         self.SerialPort.port = port_name
         self.SerialPort.open()
 
