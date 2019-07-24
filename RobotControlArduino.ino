@@ -13,8 +13,12 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 // For 50Hz PWM update rate: 4096 (counts) / 20 ms = 205 counts/ms
 // min position at 1ms = 205 counts
 // max position at 2ms = 410 counts
-#define SERVOMIN  190 // this is the 'minimum' pulse length count (out of 4096)
-#define SERVOMAX  440 // this is the 'maximum' pulse length count (out of 4096)
+#define SERVOMIN  459.6832 // this is the 'minimum' pulse length count (out of 4096)
+#define SERVOMAX  859.4528 // this is the 'maximum' pulse length count (out of 4096)
+
+int restValue=(SERVOMIN+SERVOMAX)/2;
+
+double deadzone=15;
 
 int risePin = 0; //triggers
 int sinkPin = 1;
@@ -32,25 +36,27 @@ int handAngle = 90;
 int camAngle = 90;
 int cam2Angle = 90;
 
+
 int dataCount = 0;
 bool collectData = false;
 bool failsafestate = true;
 
 void setup() {
   Serial.begin(38400);
-
+  
   pwm.begin();
 
-  pwm.setPWMFreq(50);  // ESC's run at ~50 Hz updates
+  pwm.setPWMFreq(122);  // ESC's run at ~122 Hz updates
 
   delay(10);
 
   Serial.println("Setting up da servos!");
+  
 
-  pwm.setPWM(forLPin, 0, SERVOMIN);
-  pwm.setPWM(forRPin, 0, SERVOMIN);
-  pwm.setPWM(risePin, 0, SERVOMIN);
-  pwm.setPWM(sinkPin, 0, SERVOMIN);
+  pwm.setPWM(forLPin, 0, restValue);
+  pwm.setPWM(forRPin, 0, restValue);
+  pwm.setPWM(risePin, 0, restValue);
+  pwm.setPWM(sinkPin, 0, restValue);
   pwm.setPWM(armPin, 0, angleToPulseLength(armAngle));
   pwm.setPWM(wristPin, 0, angleToPulseLength(wristAngle));
   pwm.setPWM(handPin, 0, angleToPulseLength(handAngle));
@@ -73,11 +79,15 @@ void loop() {
     else if (Serial.peek() == 251)
     {
       Serial.read();
-      pwm.setPWM(forLPin, 0, SERVOMIN);
-      pwm.setPWM(forRPin, 0, SERVOMIN);
-      pwm.setPWM(risePin, 0, SERVOMIN);
-      pwm.setPWM(sinkPin, 0, SERVOMIN);
-      delay(3000);
+      failsafestate=true;
+      Serial.print("FailSafeState= ");
+      Serial.println(failsafestate);
+      pwm.setPWM(forLPin, 0, restValue);
+      pwm.setPWM(forRPin, 0, restValue);
+      pwm.setPWM(risePin, 0, restValue);
+      pwm.setPWM(sinkPin, 0, restValue);
+      
+      
     }
     else if (collectData && dataCount < 16)
     {
@@ -121,15 +131,16 @@ void loop() {
       if (bytes[12] == 1)
       {
         failsafestate = !failsafestate;
+        Serial.print("FailSafeState= ");
+        Serial.println(failsafestate);
       }
 
       if (failsafestate == true)
       {
-        Serial.println("FAILSAFESTATE TRUE");
-        pwm.setPWM(forLPin, 0, SERVOMIN);
-        pwm.setPWM(forRPin, 0, SERVOMIN);
-        pwm.setPWM(risePin, 0, SERVOMIN);
-        pwm.setPWM(sinkPin, 0, SERVOMIN);
+        pwm.setPWM(forLPin, 0, restValue);
+        pwm.setPWM(forRPin, 0, restValue);
+        pwm.setPWM(risePin, 0, restValue);
+        pwm.setPWM(sinkPin, 0, restValue);
         pwm.setPWM(armPin, 0, angleToPulseLength(armAngle));
         pwm.setPWM(wristPin, 0, angleToPulseLength(wristAngle));
         pwm.setPWM(handPin, 0, angleToPulseLength(handAngle));
@@ -138,7 +149,7 @@ void loop() {
       }
       else
       {
-        Serial.println("FAILSAFESTATE FALSE");
+       
         differentialDrive(bytes[1], bytes[0]);
         moveUpAndDown(bytes[4]);
 
@@ -210,21 +221,33 @@ void differentialDrive(int turn, int thrust) {
   double lMotor = 0.0;
   double A = 0.0;
 
-  // Only move in quadrant 1 or 2
-  if (thrust > 0)  //positive y values
+//  // Only move in quadrant 1 or 2
+  if (thrust >= 0)  //positive y values
   {
+    
     A = sqrt(sq(turn) + sq(thrust));
-    if (A >= 10)
+    if (A >= deadzone)
     {
+       double angle=atan2 (thrust, turn);
+       double tempturn=deadzone*(cos(angle));
+       double tempthrust=deadzone*(sin(angle));
       if (turn < 0)
       {
+       
+        turn= map(turn, tempturn,-100,0,-100);
+        thrust= map(thrust, tempthrust,100,0,100);
+        A = sqrt(sq(turn) + sq(thrust));
         rMotor = A;
         lMotor = ((turn / 100.0) + 1.0) * A; //smaller value then A
       }
       else
       {
+        turn= map(turn, tempturn,100,0,100);
+        thrust= map(thrust,tempthrust,100,0,100);
+        A = sqrt(sq(turn) + sq(thrust));
         lMotor = A;
         rMotor = (1.0 - (turn / 100.0)) * A;
+        
       }
     }
     else
@@ -234,18 +257,31 @@ void differentialDrive(int turn, int thrust) {
     }
   }
 
+
+
+
+
   if (thrust < 0) //negative y values (going backwards wheeeee)
   {
     A = sqrt(sq(turn) + sq(thrust));
-    if (A >= 10)
+    if (A >= deadzone)
     {
+       double angle=atan2 (thrust, turn);
+       double tempturn=deadzone*(cos(angle));
+       double tempthrust=deadzone*(sin(angle));
       if (turn < 0)
       {
+        turn= map(turn, tempturn,-100,0,-100);
+        thrust= map(thrust, tempthrust,-100,0,-100);
+        A = sqrt(sq(turn) + sq(thrust));
         rMotor = -A;
         lMotor = -((turn / 100.0) + 1.0) * A; //smaller value then A
       }
       else
       {
+        turn= map(turn, tempturn,100,0,100);
+        thrust= map(thrust,tempthrust,-100,0,-100);
+        A = sqrt(sq(turn) + sq(thrust));
         lMotor = -A;
         rMotor = -(1.0 - (turn / 100.0)) * A;
       }
@@ -257,18 +293,6 @@ void differentialDrive(int turn, int thrust) {
     }
   }
 
-  //  DEBUGGING
-  //  Serial.print("lMotor: ");
-  //  Serial.print(lMotor);
-  //  Serial.print(", rMotor: ");
-  //  Serial.print(rMotor);
-  //  Serial.print(", turn: ");
-  //  Serial.print(turn);
-  //  Serial.print(", thrust: ");
-  //  Serial.print(thrust);
-  //  Serial.print(", A: ");
-  //  Serial.println(A);
-
   rMotor = constrain(rMotor, -100, 100);
   lMotor = constrain(lMotor, -100, 100);
   rMotor = map(rMotor, -100, 100, SERVOMIN, SERVOMAX);
@@ -276,6 +300,24 @@ void differentialDrive(int turn, int thrust) {
 
   pwm.setPWM(forRPin, 0, int(rMotor));
   pwm.setPWM(forLPin, 0, int(lMotor));
+
+
+//Direct Test
+//lMotor = map(thrust, -100, 100, SERVOMIN, SERVOMAX);
+//pwm.setPWM(forLPin, 0, int(lMotor));
+
+  //  DEBUGGING
+//    Serial.print("lMotor: ");
+//    Serial.print(lMotor);
+//    Serial.print(", rMotor: ");
+//    Serial.print(rMotor);
+//    Serial.print(", turn: ");
+//    Serial.print(turn);
+//    Serial.print(", thrust: ");
+//    Serial.print(thrust);
+//    Serial.print(", A: ");
+//    Serial.println(A);
+
 }
 
 // value has range (0, 100). 0=Full down, 100=full up, 50=stay put
