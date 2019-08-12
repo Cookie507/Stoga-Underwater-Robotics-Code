@@ -16,9 +16,10 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define SERVOMIN  459.6832 // this is the 'minimum' pulse length count (out of 4096)
 #define SERVOMAX  859.4528 // this is the 'maximum' pulse length count (out of 4096)
 
-int restValue=(SERVOMIN+SERVOMAX)/2;
+int SERVOMIDDLE=(SERVOMIN+SERVOMAX)/2;
 
-double deadzone=15;
+int deadZoneLeftRight= 15;
+int deadZoneUpDown= 3;
 
 int risePin = 0; //triggers
 int sinkPin = 1;
@@ -53,10 +54,10 @@ void setup() {
   Serial.println("Setting up da servos!");
   
 
-  pwm.setPWM(forLPin, 0, restValue);
-  pwm.setPWM(forRPin, 0, restValue);
-  pwm.setPWM(risePin, 0, restValue);
-  pwm.setPWM(sinkPin, 0, restValue);
+  pwm.setPWM(forLPin, 0, SERVOMIDDLE);
+  pwm.setPWM(forRPin, 0, SERVOMIDDLE);
+  pwm.setPWM(risePin, 0, SERVOMIDDLE);
+  pwm.setPWM(sinkPin, 0, SERVOMIDDLE);
   pwm.setPWM(armPin, 0, angleToPulseLength(armAngle));
   pwm.setPWM(wristPin, 0, angleToPulseLength(wristAngle));
   pwm.setPWM(handPin, 0, angleToPulseLength(handAngle));
@@ -82,10 +83,10 @@ void loop() {
       failsafestate=true;
       Serial.print("FailSafeState= ");
       Serial.println(failsafestate);
-      pwm.setPWM(forLPin, 0, restValue);
-      pwm.setPWM(forRPin, 0, restValue);
-      pwm.setPWM(risePin, 0, restValue);
-      pwm.setPWM(sinkPin, 0, restValue);
+      pwm.setPWM(forLPin, 0, SERVOMIDDLE);
+      pwm.setPWM(forRPin, 0, SERVOMIDDLE);
+      pwm.setPWM(risePin, 0, SERVOMIDDLE);
+      pwm.setPWM(sinkPin, 0, SERVOMIDDLE);
       
       
     }
@@ -137,10 +138,10 @@ void loop() {
 
       if (failsafestate == true)
       {
-        pwm.setPWM(forLPin, 0, restValue);
-        pwm.setPWM(forRPin, 0, restValue);
-        pwm.setPWM(risePin, 0, restValue);
-        pwm.setPWM(sinkPin, 0, restValue);
+        pwm.setPWM(forLPin, 0, SERVOMIDDLE);
+        pwm.setPWM(forRPin, 0, SERVOMIDDLE);
+        pwm.setPWM(risePin, 0, SERVOMIDDLE);
+        pwm.setPWM(sinkPin, 0, SERVOMIDDLE);
         pwm.setPWM(armPin, 0, angleToPulseLength(armAngle));
         pwm.setPWM(wristPin, 0, angleToPulseLength(wristAngle));
         pwm.setPWM(handPin, 0, angleToPulseLength(handAngle));
@@ -226,11 +227,11 @@ void differentialDrive(int turn, int thrust) {
   {
     
     A = sqrt(sq(turn) + sq(thrust));
-    if (A >= deadzone)
+    if (A >= deadZoneLeftRight)
     {
        double angle=atan2 (thrust, turn);
-       double tempturn=deadzone*(cos(angle));
-       double tempthrust=deadzone*(sin(angle));
+       double tempturn=deadZoneLeftRight*(cos(angle));
+       double tempthrust=deadZoneLeftRight*(sin(angle));
       if (turn < 0)
       {
        
@@ -264,11 +265,11 @@ void differentialDrive(int turn, int thrust) {
   if (thrust < 0) //negative y values (going backwards wheeeee)
   {
     A = sqrt(sq(turn) + sq(thrust));
-    if (A >= deadzone)
+    if (A >= deadZoneLeftRight)
     {
        double angle=atan2 (thrust, turn);
-       double tempturn=deadzone*(cos(angle));
-       double tempthrust=deadzone*(sin(angle));
+       double tempturn=deadZoneLeftRight*(cos(angle));
+       double tempthrust=deadZoneLeftRight*(sin(angle));
       if (turn < 0)
       {
         turn= map(turn, tempturn,-100,0,-100);
@@ -327,23 +328,23 @@ void moveUpAndDown(int value) {
   // Serial.println(angle);
 
   // Go down
-  if (value <= 45)
+  if (value <= 50-deadZoneUpDown)
   {
-    value = map(value, 45, 0, SERVOMIN, SERVOMAX);
-    pwm.setPWM(risePin, 0, SERVOMIN);
+    value = map(value, 0, 45, SERVOMIN, SERVOMIDDLE);
+    pwm.setPWM(risePin, 0, value);
     pwm.setPWM(sinkPin, 0, value);
   }
   // Go up
-  else if (value >= 55)
+  else if (value >= 50+deadZoneUpDown)
   {
-    value = map(value, 55, 100, SERVOMIN, SERVOMAX);
+    value = map(value, 55, 100, SERVOMIDDLE, SERVOMAX);
     pwm.setPWM(risePin, 0, value);
-    pwm.setPWM(sinkPin, 0, SERVOMIN);
+    pwm.setPWM(sinkPin, 0, value);
   }
   else
   {
-    pwm.setPWM(risePin, 0, SERVOMIN);
-    pwm.setPWM(sinkPin, 0, SERVOMIN);
+    pwm.setPWM(risePin, 0, SERVOMIDDLE);
+    pwm.setPWM(sinkPin, 0, SERVOMIDDLE);
   }
 }
 
