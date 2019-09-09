@@ -1,6 +1,7 @@
 import pygame
 import serial
 import sys
+import time
 from pygame.locals import *
 from serial.tools.list_ports import comports
 from PyQt5.QtGui import *
@@ -8,32 +9,39 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 
 
+
 class GUI(QWidget):
     def __init__(self, *args, **kwargs):
         super(GUI, self).__init__(*args, **kwargs)
 
         self.comm = Communications()
-
-        pygame.init()
-
-        # Set up the joystick
-        pygame.joystick.init()
-
         self.my_joystick = None
+        self.joystick_list = []
         self.joystick_names = []
         self.g_keys = None
         self.axes1 = None
         self.axes2 = None
 
-        # Enumerate joysticks
-        for i in range(0, pygame.joystick.get_count()):
-            self.joystick_names.append(pygame.joystick.Joystick(i).get_name())
-        print(self.joystick_names)
-
+        # pygame startup
+        pygame.init()
+        # Set up the joystick
+        pygame.joystick.init()
+        self.update_numbered_list_of_controllers()
         # By default, load the first available joystick.
-        if len(self.joystick_names) > 0:
-            self.my_joystick = pygame.joystick.Joystick(0)
-            self.my_joystick.init()
+        if len(self.joystick_list) > 0:
+            self.connect_to_controller(0)
+        else:
+            print("No controllers found")
+
+        # # Enumerate joysticks
+        # for i in range(0, pygame.joystick.get_count()):
+        #     self.joystick_names.append(pygame.joystick.Joystick(i).get_name())
+        # print(self.joystick_names)
+
+        # # By default, load the first available joystick.
+        # if len(self.joystick_names) > 0:
+        #     self.my_joystick = pygame.joystick.Joystick(0)
+        #     self.my_joystick.init()
 
         # Start timer for controller polling
         self.__timer_init = QTimer()
@@ -48,8 +56,42 @@ class GUI(QWidget):
         self.axes1 = None
         self.initUI()
 
+    def update_numbered_list_of_controllers(self):
+        # Enumerate joysticks
+        self.joystick_list.clear()
+        for i in range(0, pygame.joystick.get_count()):
+            self.joystick_list.append((i, pygame.joystick.Joystick(i).get_name()))
+        if len(self.joystick_list):
+            for num, name in self.joystick_list:
+                print(num, ":", name)
 
     def initUI(self):
+
+        # Controller selection combo box. Only lists currently connected controllers.
+        hbox_cont_select = QHBoxLayout()
+        cb_controllers = QComboBox()
+        for item in self.joystick_list:
+            cb_controllers.addItem(item[1])
+        hbox_cont_select.addWidget(cb_controllers)
+        cb_controllers.currentIndexChanged.connect(self.selection_change)
+
+        # Number box that alters the value of the variable restrictor (limits how much current the motor can draw by limiting magnitude of thrust) in arduino
+        number_box_layout = QHBoxLayout()
+        description = QLabel(self)
+        description.setText('Restrictor Value')
+        number_box_layout.addWidget(description)
+
+        self.numberBox = QSpinBox()
+        self.numberBox.setMinimum(0)
+        self.numberBox.setMaximum(100)
+        self.numberBox.setSingleStep(1)
+        number_box_layout.addWidget(self.numberBox)
+
+        numberboxButton = QPushButton("Send")
+        numberboxButton.clicked.connect(self.sendnumberboxbuttonState)
+        number_box_layout.addWidget(numberboxButton)
+
+
         # Layout for axes display
         vbox_axes = QVBoxLayout()
         vbox_axes.addStretch(1)
@@ -123,11 +165,14 @@ class GUI(QWidget):
 
         vbox = QVBoxLayout()
         vbox.addStretch(1)
+        vbox.addLayout(hbox_cont_select)
+        vbox.addLayout(number_box_layout)
         vbox.addLayout(vbox_axes)
         vbox.addWidget(label_buttons)
         vbox.addLayout(hbox_buttons)
         vbox.addWidget(label_dpad)
         vbox.addLayout(hbox_dpad)
+
 
         button = QPushButton("Reset Motors")
         button.clicked.connect(self.send_reset)
@@ -138,6 +183,44 @@ class GUI(QWidget):
 
         # Qt show window
         self.show()
+
+    def connect_to_controller(self, index: int):
+        """
+
+        :param index: 0-based combo box selection index
+        :return:
+        """
+        # Disconnect from controller
+        if self.my_joystick:
+            self.my_joystick.quit()
+        try:
+            if len(self.joystick_list) > index:
+                self.my_joystick = pygame.joystick.Joystick(index)
+                self.my_joystick.init()
+                num_axes = self.my_joystick.get_numaxes()
+                num_buttons = self.my_joystick.get_numbuttons()
+                num_hats = self.my_joystick.get_numhats()
+                print('Found', num_axes, 'axes')
+                print('Found', num_buttons, 'buttons')
+                print('Found', num_hats, 'pov controllers')
+
+                # if num_axes % 2 != 0:
+                #     # raise ValueError('Expected pairs of axes, got ' + str(num_axes))
+                #     num_axes = num_axes
+            else:
+                print("Invalid index specified:", index)
+        except Exception:
+            print("Exception while connecting to controller", index)
+
+    def selection_change(self, index):
+        """
+
+        :param index: selection index, 0 based
+        :return:
+        """
+        print("Items selection changed to:", self.joystick_list[index])
+        # Connect to selected controller - disconnect from previous
+        self.connect_to_controller(index)
 
     def pollController(self):
         # Values ranges to collect and send to Arduino
@@ -227,10 +310,15 @@ class GUI(QWidget):
                 # For debug from Arduino, uncomment
                 self.comm.getBytesAvailableToRead()
 
+    def sendnumberboxbuttonState(self):
+        sendArray = bytearray(2)
+        sendArray[0] = int(252)  # Flag value
+        sendArray[1] = int(self.numberBox.value())  # restrictor value
+        self.comm.sendData(sendArray)
+
     def quit(self):
         if self.my_joystick and self.my_joystick.get_init():
             self.my_joystick.quit()
-        self.run_timer.stop()
         pygame.quit()
 
     # Overrides
