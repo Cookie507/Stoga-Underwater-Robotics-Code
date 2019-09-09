@@ -21,6 +21,8 @@ int SERVOMIDDLE=(SERVOMIN+SERVOMAX)/2;
 int deadZoneLeftRight= 15;
 int deadZoneUpDown= 3;
 
+float restrictor=0; //limits how much current the motor can draw by limiting magnitude of thrust
+
 int risePin = 0; //triggers
 int sinkPin = 1;
 int forLPin = 2; //left stick combo
@@ -71,25 +73,32 @@ void setup() {
 void loop() {
   if (Serial.available())
   {
-    if (Serial.peek() == 250)
+    if (Serial.peek() == 250)// 250 byte controls actuators
     {
       Serial.read();
       collectData = true;
       dataCount = 0;
     }
-    else if (Serial.peek() == 251)
+    else if (Serial.peek() == 251)//251 byte controls failsafe
     {
       Serial.read();
       failsafestate=true;
-      Serial.print("FailSafeState= ");
+      Serial.print("FailSafeState=");
       Serial.println(failsafestate);
       pwm.setPWM(forLPin, 0, SERVOMIDDLE);
       pwm.setPWM(forRPin, 0, SERVOMIDDLE);
       pwm.setPWM(risePin, 0, SERVOMIDDLE);
-      pwm.setPWM(sinkPin, 0, SERVOMIDDLE);
-      
-      
+      pwm.setPWM(sinkPin, 0, SERVOMIDDLE); 
     }
+
+    else if (Serial.peek() == 252)//252 byte controls restrictor
+    {
+      Serial.read();
+      restrictor = float(Serial.read()) / 100.0;
+//      Serial.print("Restrictor=");
+//      Serial.println(restrictor);
+    }
+
     else if (collectData && dataCount < 16)
     {
       bytes[dataCount] = Serial.read();
@@ -296,8 +305,8 @@ void differentialDrive(int turn, int thrust) {
 
   rMotor = constrain(rMotor, -100, 100);
   lMotor = constrain(lMotor, -100, 100);
-  rMotor = map(rMotor, -100, 100, SERVOMIN, SERVOMAX);
-  lMotor = map(lMotor, -100, 100, SERVOMIN, SERVOMAX);
+  rMotor = map(rMotor*restrictor, -100, 100, SERVOMIN, SERVOMAX);
+  lMotor = map(lMotor*restrictor, -100, 100, SERVOMIN, SERVOMAX);
 
   pwm.setPWM(forRPin, 0, int(rMotor));
   pwm.setPWM(forLPin, 0, int(lMotor));
