@@ -315,6 +315,8 @@ class GUI(QWidget):
         sendArray[0] = int(252)  # Flag value
         sendArray[1] = int(self.numberBox.value())  # restrictor value
         self.comm.sendData(sendArray)
+        # For debug from Arduino, uncomment
+        # self.comm.getBytesAvailableToRead()
 
     def quit(self):
         if self.my_joystick and self.my_joystick.get_init():
@@ -392,7 +394,7 @@ class Communications:
             print(port)
         return ports
 
-    def openPort(self, port_name="COM3"):
+    def openPort(self, port_name="COM6"):
         self.SerialPort.port = port_name
         self.SerialPort.open()
 
