@@ -94,9 +94,11 @@ void loop() {
     else if (Serial.peek() == 252)//252 byte controls restrictor
     {
       Serial.read();
-      restrictor = float(Serial.read()) / 100.0;
-//      Serial.print("Restrictor=");
-//      Serial.println(restrictor);
+      delay(10);
+      int tmp = Serial.read();      
+      restrictor = tmp / 100.0;
+      Serial.print("Restrictor=");
+      Serial.println(restrictor);
     }
 
     else if (collectData && dataCount < 16)
