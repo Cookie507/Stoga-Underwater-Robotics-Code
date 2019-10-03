@@ -338,17 +338,18 @@ void moveUpAndDown(int value) {
   // Serial.print("Rise Angle: ");
   // Serial.println(angle);
 
+  value = (value*2) - 100; // now -100 to 100
   // Go down
-  if (value <= 50-deadZoneUpDown)
+  if (value <= (-5)-deadZoneUpDown)
   {
-    value = map(value, 0, 45, SERVOMIN, SERVOMIDDLE);
+    value = map(value*restrictor, -100, -5, SERVOMIN, SERVOMIDDLE);
     pwm.setPWM(risePin, 0, value);
     pwm.setPWM(sinkPin, 0, value);
   }
   // Go up
-  else if (value >= 50+deadZoneUpDown)
+  else if (value >= 5+deadZoneUpDown)
   {
-    value = map(value, 55, 100, SERVOMIDDLE, SERVOMAX);
+    value = map(value*restrictor, 5, 100, SERVOMIDDLE, SERVOMAX);
     pwm.setPWM(risePin, 0, value);
     pwm.setPWM(sinkPin, 0, value);
   }
